@@ -1,8 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, initializeAuth, getReactNativePersistence } from "firebase/auth";
-import { getAnalytics } from "firebase/analytics";
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import { getStorage } from "firebase/storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -16,12 +16,15 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+// Firebase 앱 생성
 const app = initializeApp(firebaseConfig);
-initializeApp(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
-});
-const auth = getAuth(app);
-const db = getFirestore(app);
-const analytics = getAnalytics(app);
 
-export { auth, db };
+// React Native에서 Auth Persistence 설정
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
+
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+export { app, auth, db, storage };
