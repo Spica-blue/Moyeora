@@ -62,12 +62,12 @@ git clone <repo-url>
 cd Moyeora
 ```
 
-3. 패키지 설치
+2. 패키지 설치
 ```
 npm install
 ```
 
-5. 🔧 Firebase 설정
+3. 🔧 Firebase 설정
 
 프로젝트 루트의 firebaseConfig.js 파일에 본인의 Firebase 환경 변수를 입력합니다.
 ```
