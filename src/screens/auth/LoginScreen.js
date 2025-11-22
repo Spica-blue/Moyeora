@@ -17,7 +17,7 @@ const LoginScreen = ({ navigation }) => {
     try{
       await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      Alert.alert("로그인 성공", "성공적으로 로그인되었습니다!");
+      // Alert.alert("로그인 성공", "성공적으로 로그인되었습니다!");
       navigation.replace('PostList');
     } catch(error){
       console.log(error);
