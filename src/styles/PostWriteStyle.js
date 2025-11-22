@@ -11,24 +11,6 @@ const PostWriteStyle = StyleSheet.create({
   },
 
   /* 헤더 */
-  // header: {
-  //   height: 48,
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   paddingHorizontal: 12,
-  //   borderBottomWidth: 1,
-  //   borderBottomColor: '#eee',
-  // },
-  // headerLeft: {
-  //   fontSize: 20,
-  //   width: 40,
-  // },
-  // headerTitle: {
-  //   flex: 1,
-  //   textAlign: 'center',
-  //   fontSize: 16,
-  //   fontWeight: '600',
-  // },
   headerRight: {
     fontSize: 14,
     fontWeight: '600',
@@ -98,6 +80,32 @@ const PostWriteStyle = StyleSheet.create({
   toolbarIcon: {
     fontSize: 20,
     color: '#444',
+  },
+
+  /* 오버레이 */
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99,
+  },
+  box: {
+    width: 140,
+    paddingVertical: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 5,
+  },
+  text: {
+    marginTop: 10,
+    color: '#333',
+    fontSize: 14,
   },
 });
 

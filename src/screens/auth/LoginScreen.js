@@ -21,7 +21,7 @@ const LoginScreen = ({ navigation }) => {
       navigation.replace('PostList');
     } catch(error){
       console.log(error);
-      Alert.alert("로그인 실패", error.message);
+      Alert.alert("로그인 실패", "가입된 계정을 찾을 수 없습니다.\n이메일 또는 비밀번호를 다시 확인해주세요.");
     }
   };
   

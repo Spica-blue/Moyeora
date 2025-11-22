@@ -87,11 +87,11 @@ const PostListStyle = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 16,
-    bottom: 90,
+    bottom: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#1976d2',
+    backgroundColor: '#acd5ffff',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,

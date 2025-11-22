@@ -18,6 +18,8 @@ const PostWriteScreen = ({ navigation, route }) => {
   const [existingImageUrls, setExistingImageUrls] = useState([]);
   const [loading, setLoading] = useState(isEdit);
 
+  const [submitting, setSubmitting] = useState(false);
+
   // 수정 모드일 때 기존 글 불러오기
   useEffect(() => {
     const fetchPost = async () => {
@@ -110,6 +112,8 @@ const PostWriteScreen = ({ navigation, route }) => {
       return;
     }
 
+    setSubmitting(true);
+
     try{
       const user = auth.currentUser;
       if (!user) {
@@ -159,6 +163,8 @@ const PostWriteScreen = ({ navigation, route }) => {
     } catch(error){
       console.log(error);
       Alert.alert("에러", error.message);
+    } finally{
+      setSubmitting(false);
     }
   };
 
@@ -229,6 +235,15 @@ const PostWriteScreen = ({ navigation, route }) => {
             <Text style={styles.toolbarIcon}>📷</Text>
           </TouchableOpacity>
         </View>
+
+        {submitting && (
+          <View style={styles.overlay}>
+            <View style={styles.box}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.text}>업로드 중...</Text>
+            </View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   )
