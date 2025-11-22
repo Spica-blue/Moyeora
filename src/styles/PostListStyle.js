@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 const PostListStyle = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa', // 밝은 배경
+    backgroundColor: '#fff', // 밝은 배경
   },
   screenTitle: {
     fontSize: 18,

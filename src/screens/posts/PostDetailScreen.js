@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, Alert, Button, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Image, ActivityIndicator, Alert, Button, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { doc, getDoc, deleteDoc, collection, addDoc, onSnapshot, orderBy, query, updateDoc, increment } from 'firebase/firestore';
-import { auth, db } from '../../../firebaseConfig';
+import { doc, getDoc, collection, addDoc, onSnapshot, orderBy, query, updateDoc, increment } from 'firebase/firestore';
+import { ref, deleteObject } from "firebase/storage";
+import { auth, db, storage } from '../../../firebaseConfig';
+import { deletePost } from '../../services/postService';
 import styles from "../../styles/PostDetailStyle";
 
 const PostDetailScreen = ({ route, navigation }) => {
@@ -70,19 +72,19 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   // 게시글 삭제
   const handleDelete = () => {
-    if(!post) return;
+    if (!post) return;
 
-    Alert.alert('게시글 삭제', '정말로 삭제하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
+    Alert.alert("게시글 삭제", "정말로 삭제하시겠습니까?", [
+      { text: "취소", style: "cancel" },
       {
-        text: '삭제',
-        style: 'destructive',
+        text: "삭제",
+        style: "destructive",
         onPress: async () => {
-          try{
-            await deleteDoc(doc(db, 'posts', post.id));
+          try {
+            await deletePost(post.id);   // service: 이미지 + 댓글 + 게시글 삭제
             Alert.alert("삭제 완료", "게시글이 삭제되었습니다.");
             navigation.goBack();
-          } catch(err){
+          } catch (err) {
             console.log(err);
             Alert.alert("삭제 실패", "게시글 삭제 중 오류가 발생했습니다.");
           }

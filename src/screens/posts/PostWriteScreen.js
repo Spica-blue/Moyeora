@@ -1,16 +1,54 @@
-import React, { useState, useLayoutEffect } from 'react';
-import { View, Text, TextInput, Button, Image, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useLayoutEffect, useEffect } from 'react';
+import { View, Text, TextInput, Image, Alert, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { addDoc, getDoc, collection, serverTimestamp, doc } from 'firebase/firestore';
+import { addDoc, getDoc, collection, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../../../firebaseConfig';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from "../../styles/PostWriteStyle";
 
-const PostWriteScreen = ({ navigation }) => {
+const PostWriteScreen = ({ navigation, route }) => {
+  const mode = route?.params?.mode || 'create';
+  const postId = route?.params?.postId || null;
+  const isEdit = mode === 'edit' && postId;
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState([]);
+  const [existingImageUrls, setExistingImageUrls] = useState([]);
+  const [loading, setLoading] = useState(isEdit);
+
+  // 수정 모드일 때 기존 글 불러오기
+  useEffect(() => {
+    const fetchPost = async () => {
+      if (!isEdit) return;
+
+      try {
+        const postRef = doc(db, 'posts', postId);
+        const snap = await getDoc(postRef);
+
+        if (!snap.exists()) {
+          Alert.alert('오류', '게시글 정보를 불러올 수 없습니다.');
+          navigation.goBack();
+          return;
+        }
+
+        const data = snap.data();
+        setTitle(data.title || '');
+        setContent(data.content || '');
+        const urls = data.imageUrls || (data.imageUrl ? [data.imageUrl] : []);
+        setExistingImageUrls(urls);
+      } catch (err) {
+        console.log(err);
+        Alert.alert('오류', '게시글 정보를 불러오는 중 문제가 발생했습니다.');
+        navigation.goBack();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPost();
+  }, [isEdit, postId, navigation]);
 
   // Stack 헤더를 "✕  글 작성  등록" 형태로 커스터마이징
   useLayoutEffect(() => {
@@ -85,19 +123,39 @@ const PostWriteScreen = ({ navigation }) => {
 
       const imageUrls = await uploadImages();   // 사진 있으면 업로드
 
-      await addDoc(collection(db, "posts"), {
-        title,
-        content,
-        authorId: user.uid,
-        authorName: nickname,
-        imageUrls,
-        imageUrl: imageUrls[0] || null,
-        commentCount: 0,
-        createdAt: serverTimestamp(),
-      });
+      if(isEdit){
+        // 수정 모드 : updateDoc
+        const postRef = doc(db, 'posts', postId);
+        
+        // 기존 이미지 + 새 이미지 합치기
+        const mergedImageUrls = [...existingImageUrls, ...imageUrls];
 
-      Alert.alert("작성 완료", "게시글이 등록되었습니다!");
-      navigation.goBack();
+        await updateDoc(postRef, {
+          title,
+          content,
+          imageUrls: mergedImageUrls,
+          imageUrl: mergedImageUrls[0] || null,
+        });
+
+        Alert.alert("수정 완료", "게시글이 수정되었습니다.");
+        navigation.goBack();
+      }
+      else{
+        // 새 글 작성 모드 : addDoc
+        await addDoc(collection(db, "posts"), {
+          title,
+          content,
+          authorId: user.uid,
+          authorName: nickname,
+          imageUrls,
+          imageUrl: imageUrls[0] || null,
+          commentCount: 0,
+          createdAt: serverTimestamp(),
+        });
+
+        Alert.alert("작성 완료", "게시글이 등록되었습니다!");
+        navigation.goBack();
+      }
     } catch(error){
       console.log(error);
       Alert.alert("에러", error.message);
@@ -108,51 +166,20 @@ const PostWriteScreen = ({ navigation }) => {
   const removeImage = index => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
+
+  if(loading){
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" />
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  const allPreviewImages = [...existingImageUrls, ...images];
   
   return (
-    // <SafeAreaView style={styles.safe}>
-    //   <ScrollView style={styles.container}>
-    //     <Text style={styles.heading}>글 작성</Text>
-      
-    //     <TextInput
-    //       style={styles.input}
-    //       placeholder='제목'
-    //       value={title}
-    //       onChangeText={setTitle}
-    //     />
-
-    //     <TextInput
-    //       style={[styles.input, { height: 120 }]}
-    //       placeholder='내용을 입력하세요'
-    //       value={content}
-    //       onChangeText={setContent}
-    //       multiline
-    //     />
-
-    //     {/* {images && <Image source={{ uri: images }} style={styles.image} />} */}
-
-    //     {/* 본문 아래에 사진들이 들어가니까, 보기에도 “본문에 포함된” 느낌 */}
-    //     {images.length > 0 && (
-    //       <View style={styles.imageList}>
-    //         {images.map((uri, idx) => (
-    //           <TouchableOpacity key={idx} onLongPress={() => removeImage(idx)}>
-    //             <Image source={{ uri }} style={styles.image} />
-    //           </TouchableOpacity>
-    //         ))}
-    //         <Text style={styles.imageHint}>※ 사진을 길게 누르면 삭제할 수 있어요.</Text>
-    //       </View>
-    //     )}
-
-    //     {/* <Button title='사진 첨부' onPress={pickImage} /> 
-    //     <Button title='작성 완료' onPress={onSubmit} /> */}
-    //     <View style={styles.buttonRow}>
-    //       <Button title="사진 첨부" onPress={pickImage} />
-    //     </View>
-    //     <View style={styles.buttonRow}>
-    //       <Button title="작성 완료" onPress={onSubmit} />
-    //     </View>
-    //   </ScrollView>
-    // </SafeAreaView>
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
         {/* 본문 영역 */}
@@ -182,9 +209,9 @@ const PostWriteScreen = ({ navigation }) => {
           />
 
           {/* 본문 아래에 첨부된 이미지들 */}
-          {images.length > 0 && (
+          {allPreviewImages.length > 0 && (
             <View style={styles.imageList}>
-              {images.map((uri, idx) => (
+              {allPreviewImages.map((uri, idx) => (
                 <TouchableOpacity key={idx} onLongPress={() => removeImage(idx)}>
                   <Image source={{ uri }} style={styles.image} />
                 </TouchableOpacity>
