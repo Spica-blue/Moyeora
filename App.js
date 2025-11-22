@@ -8,6 +8,7 @@ import LoginScreen from './src/screens/auth/LoginScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
 import PostListScreen from './src/screens/posts/PostListScreen';
 import PostWriteScreen from './src/screens/posts/PostWriteScreen';
+import PostDetailScreen from './src/screens/posts/PostDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -40,6 +41,11 @@ export default function App() {
             name="PostWrite"
             component={PostWriteScreen}
             options={{ title: "글 작성" }}
+          />
+          <Stack.Screen
+            name="PostDetail"
+            component={PostDetailScreen}
+            options={{ title: "글 상세" }}
           />
         </Stack.Navigator>
       </NavigationContainer>

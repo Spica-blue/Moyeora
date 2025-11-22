@@ -137,7 +137,7 @@ const PostListScreen = ({ navigation }) => {
     const timeText = formatTime(item.createdAt);
 
     return (
-      <TouchableOpacity style={styles.postRow}>
+      <TouchableOpacity style={styles.postRow} onPress={() => navigation.navigate('PostDetail', { postId: item.id })}>
         {/* 왼쪽: 제목 + 메타 + 한 줄 내용 */}
         <View style={styles.postMain}>
           <Text style={styles.postTitle} numberOfLines={1}>
