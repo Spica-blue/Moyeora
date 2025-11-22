@@ -57,16 +57,20 @@ Moyeora/
 
 ## 설치 및 실행
 1. 저장소 클론
+```
 git clone <repo-url>
 cd Moyeora
+```
 
-2. 패키지 설치
+3. 패키지 설치
+```
 npm install
+```
 
-3. 🔧 Firebase 설정
+5. 🔧 Firebase 설정
 
 프로젝트 루트의 firebaseConfig.js 파일에 본인의 Firebase 환경 변수를 입력합니다.
-
+```
 // firebaseConfig.js
 const firebaseConfig = {
   apiKey: "YOUR_KEY",
@@ -76,15 +80,17 @@ const firebaseConfig = {
   messagingSenderId: "SENDER_ID",
   appId: "APP_ID",
 };
+```
 
 4. ▶️ Expo 실행 (Development)
+```
 npm start
-
+```
 
 또는
-
+```
 expo start
-
+```
 
 → 실행 후 생성된 QR코드를 스캔하여 모바일에서 앱을 실행할 수 있습니다.
 (iPhone: Expo Go 필요 / Android: Expo Go 또는 개발 빌드 권장)
@@ -92,27 +98,24 @@ expo start
 5. 📱 Android 개발 빌드 (선택)
 
 이미지 업로드 기능 등 일부 기능 테스트를 위해 필요한 경우:
-
+```
 npx expo run:android
+```
 
 6. 🍏 iOS 개발 빌드 (선택, Mac 필요)
+```
 npx expo run:ios
+```
 
 📌 필요 환경 (Requirements)
-
-Node.js 18+
-
-npm 또는 yarn
-
-Expo CLI
-
-Firebase 프로젝트
+- Node.js 18+
+- npm 또는 yarn
+- Expo CLI
+- Firebase 프로젝트
 
 🧪 테스트 환경 (Test Devices)
-
-Android 실기기 — 개발 빌드로 테스트
-
-Expo Go — 일부 기능 테스트 가능 (Firebase Storage는 개발 빌드 권장)
+- Android 실기기 — 개발 빌드로 테스트
+- Expo Go — 일부 기능 테스트 가능 (Firebase Storage는 개발 빌드 권장)
 
 ## 개발 가이드라인
 1. 코드 스타일
