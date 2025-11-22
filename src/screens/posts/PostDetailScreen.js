@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, Alert, Button } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, Alert, Button, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc, collection, addDoc, onSnapshot, orderBy, query, updateDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../../../firebaseConfig';
+import styles from "../../styles/PostDetailStyle";
 
 const PostDetailScreen = ({ route, navigation }) => {
   const { postId } = route.params; // 목록에서 넘겨준 id
+
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [sendingComment, setSendingComment] = useState(false);
 
   const currentUser = auth.currentUser;
   const isAuthor = currentUser && post && post.authorId === currentUser.uid;
@@ -38,6 +44,19 @@ const PostDetailScreen = ({ route, navigation }) => {
     fetchPost();
   }, [postId, navigation]);
 
+  // 댓글 실시간
+  useEffect(() => {
+    const commentsRef = collection(db, 'posts', postId, 'comments');
+    const q = query(commentsRef, orderBy('createdAt', 'asc'));
+    
+    const unsubscribe = onSnapshot(q, snap => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setComments(list);
+    });
+
+    return () => unsubscribe();
+  }, [postId]);
+
   const formatDate = createdAt => {
     if(!createdAt || !createdAt.toDate) return '';
     const d = createdAt.toDate();
@@ -49,6 +68,7 @@ const PostDetailScreen = ({ route, navigation }) => {
     return `${y}.${m}.${day} ${h}:${min}`;
   };
 
+  // 게시글 삭제
   const handleDelete = () => {
     if(!post) return;
 
@@ -69,6 +89,46 @@ const PostDetailScreen = ({ route, navigation }) => {
         },
       },
     ]);
+  };
+
+  // 댓글 작성
+  const handleSendComment = async () => {
+    const trimmed = commentText.trim();
+    if(!trimmed) return;
+
+    if(!currentUser){
+      Alert.alert("로그인 필요", "댓글을 작성하려면 로그인이 필요합니다.");
+      return;
+    }
+
+    try{
+      setSendingComment(true);
+
+      // 닉네임 읽기
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      const nickname = userDoc.data().nickname;
+
+      // 댓글 추가(posts/{postId}/comments)
+      await addDoc(collection(db, 'posts', postId, 'comments'), {
+        authorId: currentUser.uid,
+        authorName: nickname,
+        content: trimmed,
+        createdAt: new Date(),
+      });
+
+      // posts 문서의 commentCount 증가(있으면)
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        commentCount: increment(1),
+      }).catch(() => {});
+
+      setCommentText('');
+    } catch(err){
+      console.log(err);
+      Alert.alert("댓글 작성 실패", "댓글을 작성하는 중 오류가 발생했습니다.");
+    } finally{
+      setSendingComment(false);
+    }
   };
 
   if(loading){
@@ -92,112 +152,124 @@ const PostDetailScreen = ({ route, navigation }) => {
   }
 
   const imageUrls = post.imageUrls || (post.imageUrl ? [post.imageUrl] : []);
+  const commentCount = comments.length;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={{ paddingBottom: 24 }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* 제목 */}
-        <Text style={styles.title}>{post.title}</Text>
+        <View style={styles.container}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={{ paddingBottom: 120 }}
+          >
+            {/* 제목 */}
+            <Text style={styles.title}>{post.title}</Text>
 
-        {/* 작성자 + 날짜 + 댓글 수 */}
-        <View style={styles.metaRow}>
-          <Text style={styles.metaAuthor}>{post.authorName}</Text>
-          <Text style={styles.metaDot}>·</Text>
-          <Text style={styles.metaDate}>{formatDate(post.createdAt)}</Text>
-          <Text style={styles.metaDot}>·</Text>
-          <Text style={styles.metaDate}>댓글 {post.commentCount ?? 0}개</Text>
-        </View>
+            {/* 작성자 + 시간 */}
+            <View style={styles.metaRow}>
+              <Text style={styles.metaAuthor}>{post.authorName}</Text>
+              <Text style={styles.metaDot}>·</Text>
+              <Text style={styles.metaDate}>
+                {post.createdAt ? formatDate(post.createdAt) : ''}
+              </Text>
+            </View>
 
-        <View style={styles.divider} />
+            <View style={styles.divider} />
 
-        {/* 내용 */}
-        <Text style={styles.content}>{post.content}</Text>
+            {/* 본문 내용 */}
+            <Text style={styles.content}>{post.content}</Text>
 
-        {/* 이미지들 */}
-        {imageUrls.length > 0 && (
-          <View style={styles.imageList}>
-            {imageUrls.map((url, idx) => (
-              <Image key={idx} source={{ uri: url }} style={styles.image} />
+            {/* 첨부 이미지 */}
+            {imageUrls.length > 0 && (
+              <View style={styles.imageList}>
+                {imageUrls.map((url, idx) => (
+                  <Image key={idx} source={{ uri: url }} style={styles.image} />
+                ))}
+              </View>
+            )}
+
+            {/* 수정 / 삭제 버튼 영역 */}
+            {isAuthor && (
+              <View style={styles.actionBox}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() =>
+                    navigation.navigate('PostWrite', {
+                      mode: 'edit',
+                      postId: post.id,
+                    })
+                  }
+                >
+                  <Text style={styles.actionText}>수정</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, { marginLeft: 12 }]}
+                  onPress={handleDelete}
+                >
+                  <Text style={[styles.actionText, { color: '#D32F2F' }]}>
+                    삭제
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* 댓글 헤더 */}
+            <View style={styles.commentHeader}>
+              <Text style={styles.commentHeaderText}>
+                댓글 {commentCount}
+              </Text>
+            </View>
+
+            {/* 댓글 목록 */}
+            {comments.map(c => (
+              <View key={c.id} style={styles.commentItem}>
+                <Text style={styles.commentAuthor}>
+                  {c.authorName}
+                </Text>
+                <Text style={styles.commentDate}>
+                  {c.createdAt ? formatDate(c.createdAt) : ''}
+                </Text>
+                <Text style={styles.commentContent}>{c.content}</Text>
+              </View>
             ))}
-          </View>
-        )}
 
-        {/* 작성자일 때만 삭제 버튼 노출 */}
-        {isAuthor && (
-          <View style={styles.buttonRow}>
-            <Button title="게시글 삭제" color="red" onPress={handleDelete} />
+            {comments.length === 0 && (
+              <Text style={styles.noCommentText}>첫 댓글을 남겨보세요.</Text>
+            )}
+          </ScrollView>
+
+          {/* 댓글 입력 영역 (화면 맨 아래 고정) */}
+          <View style={styles.commentInputBar}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="댓글을 남겨보세요."
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+              placeholderTextColor="#aaa"
+            />
+            <TouchableOpacity
+              style={styles.commentSendButton}
+              onPress={handleSendComment}
+              disabled={sendingComment || !commentText.trim()}
+            >
+              <Text
+                style={[
+                  styles.commentSendText,
+                  (!commentText.trim() || sendingComment) && { color: '#bbb' },
+                ]}
+              >
+                등록
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 export default PostDetailScreen;
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111',
-    marginBottom: 8,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  metaAuthor: {
-    fontSize: 13,
-    color: '#444',
-  },
-  metaDot: {
-    fontSize: 13,
-    color: '#aaa',
-    marginHorizontal: 4,
-  },
-  metaDate: {
-    fontSize: 12,
-    color: '#888',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#eee',
-    marginVertical: 12,
-  },
-  content: {
-    fontSize: 15,
-    color: '#222',
-    lineHeight: 22,
-  },
-  imageList: {
-    marginTop: 16,
-    gap: 12,
-  },
-  image: {
-    width: '100%',
-    height: 220,
-    borderRadius: 8,
-    backgroundColor: '#f2f2f2',
-  },
-  buttonRow: {
-    marginTop: 24,
-  },
-});
