@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, Image, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../../../firebaseConfig';
 import styles from "../../styles/PostWriteStyle";
@@ -43,15 +43,7 @@ const PostWriteScreen = ({ navigation }) => {
       const downloadUrl = await getDownloadURL(imageRef);
       urls.push(downloadUrl);
     }
-
-    // const response = await fetch(images);
-    // const blob = await response.blob();
-
-    // const filename = `postImages/${auth.currentUser.uid}/${Date.now()}.jpg`;
-    // const imageRef = ref(storage, filename);
-
-    // await uploadBytes(imageRef, blob);
-    // return await getDownloadURL(imageRef);
+    
     return urls;
   };
 
@@ -63,13 +55,19 @@ const PostWriteScreen = ({ navigation }) => {
     }
 
     try{
+      const user = auth.currentUser;
+
+      // Firestore users에서 닉네임 가져오기
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const nickname = userDoc.data().nickname;
+
       const imageUrls = await uploadImages();   // 사진 있으면 업로드
 
       await addDoc(collection(db, "posts"), {
         title,
         content,
-        authorId: auth.currentUser.uid,
-        authorName: auth.currentUser.email,
+        authorId: user.uid,
+        authorName: nickname,
         imageUrls,
         imageUrl: imageUrls[0] || null,
         commentCount: 0,

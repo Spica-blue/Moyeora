@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, FlatList, Button, Alert, Image, TouchableOpacity } from 'react-native';
 import { signOut, deleteUser } from 'firebase/auth';
-import { doc, deleteDoc, collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { auth, db } from '../../../firebaseConfig';
+import { doc, deleteDoc, collection, onSnapshot, orderBy, query, where, getDocs } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
+import { auth, db, storage } from '../../../firebaseConfig';
 import styles from "../../styles/PostListStyle";
 
 const PostListScreen = ({ navigation }) => {
@@ -30,6 +31,41 @@ const PostListScreen = ({ navigation }) => {
     const m = String(d.getMinutes()).padStart(2, '0');
     return `${h}:${m}`;
   };
+
+  const deleteUserData = async (uid) => {
+    // 1. 사용자가 작성한 게시글 전부 가져오기
+    const q = query(collection(db, "posts"), where("authorId", "==", uid));
+    const querySnapshot = await getDocs(q);
+
+    for(const postDoc of querySnapshot.docs){
+      const postData = postDoc.data();
+
+      // 2. Storage 이미지 삭제
+      if(postData.imageUrls && postData.imageUrls.length > 0){
+        for(const url of postData.imageUrls){
+          const imageRef = ref(storage, url);
+          try{
+            await deleteObject(imageRef);
+          } catch(err){
+            console.log("이미지 삭제 실패:", err);
+          }
+        }
+      }
+
+      // 썸네일 단일 저장하는 imageUrl도 있으면 삭제
+      if(postData.imageUrl){
+        const thumbRef = ref(storage, postData.imageUrl);
+        try{
+          await deleteObject(thumbRef);
+        } catch(err){
+          console.log("섬네일 삭제 실패:", err);
+        }
+      }
+
+      // 3. 게시글 문서 삭제
+      await deleteDoc(doc(db, "posts", postDoc.id));
+    }
+  }
 
   // 로그아웃
   const handleLogout = async () => {
@@ -62,9 +98,18 @@ const PostListScreen = ({ navigation }) => {
               }
 
               // 1) Firestore users 컬렉션 문서 삭제
-              await deleteDoc(doc(db, 'users', user.uid));
+              // await deleteDoc(doc(db, 'users', user.uid));
 
               // 2) Firebase Auth 계정 삭제
+              // await deleteUser(user);
+
+              // 글 + 이미지 전체 삭제
+              await deleteUserData(user.uid);
+
+              // users 문서 삭제
+              await deleteDoc(doc(db, "users", user.uid));
+
+              // Auth 계정 삭제
               await deleteUser(user);
 
               Alert.alert("탈퇴 완료", "계정이 삭제되었습니다.");
