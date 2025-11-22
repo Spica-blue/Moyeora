@@ -1,10 +1,36 @@
-import React from 'react';
-import { View, Text, StyleSheet, Button, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, FlatList, Button, Alert, Image, TouchableOpacity } from 'react-native';
 import { signOut, deleteUser } from 'firebase/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { auth, db } from '../../../firebaseConfig';
+import styles from "../../styles/PostListStyle";
 
 const PostListScreen = ({ navigation }) => {
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setPosts(list);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const formatTime = createdAt => {
+    if (!createdAt || !createdAt.toDate) return '';
+    const d = createdAt.toDate();
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
   // 로그아웃
   const handleLogout = async () => {
     try{
@@ -18,7 +44,7 @@ const PostListScreen = ({ navigation }) => {
   };
 
   // 탈퇴(계정 삭제 + Firestore users 문서 삭제)
-  const hanldeDeleteAccount = async () => {
+  const handleDeleteAccount = async () => {
     Alert.alert(
       '회원 탈퇴',
       '정말로 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
@@ -59,42 +85,75 @@ const PostListScreen = ({ navigation }) => {
       ]
     );
   };
+
+  const renderItem = ({ item }) => {
+    const commentCount = item.commentCount ?? 0;
+    const authorName = item.authorName;
+    const timeText = formatTime(item.createdAt);
+
+    return (
+      <TouchableOpacity style={styles.postRow}>
+        {/* 왼쪽: 제목 + 메타 + 한 줄 내용 */}
+        <View style={styles.postMain}>
+          <Text style={styles.postTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>{authorName}</Text>
+            {timeText ? <Text style={styles.metaText}>  {timeText}</Text> : null}
+            <Text style={styles.metaText}>  · 댓글 {commentCount}개</Text>
+          </View>
+          <Text style={styles.postPreview} numberOfLines={1}>
+            {item.content}
+          </Text>
+        </View>
+
+        {/* 오른쪽: 썸네일 + 댓글 박스 느낌 */}
+        <View style={styles.rightArea}>
+          {item.imageUrl && (
+            <Image source={{ uri: item.imageUrl }} style={styles.thumb} />
+          )}
+          <View style={styles.commentBadge}>
+            <Text style={styles.commentCount}>{commentCount}</Text>
+            <Text style={styles.commentLabel}>댓글</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
   
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>모여라! 게시글 목록</Text>
-      <Text style={styles.subtitle}>글 목록 들어갈 예정</Text>
-      
-      <View style={styles.buttonGroup}>
-        <Button title='로그아웃' onPress={handleLogout} />
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <View style={styles.container}>
+        {/* <Button title='글 작성하기' onPress={() => navigation.navigate("PostWrite")} /> */}
 
-      <View style={styles.buttonGroup}>
-        <Button title='회원 탈퇴' onPress={hanldeDeleteAccount} color="red"/>
+        <Text style={styles.screenTitle}>게시글 목록</Text>
+
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+
+        {/* 글 작성 버튼 */}
+        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('PostWrite')}>
+          <Text style={styles.fabText}>🖊️</Text>
+        </TouchableOpacity>
+        
+        {/* 로그아웃 / 회원 탈퇴 */}
+        <View style={styles.bottomButtons}>
+          <View style={styles.bottomButtonWrapper}>
+            <Button title="로그아웃" onPress={handleLogout} />
+          </View>
+          <View style={styles.bottomButtonWrapper}>
+            <Button title="회원 탈퇴" onPress={handleDeleteAccount} color="red" />
+          </View>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   )
 }
 
 export default PostListScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 24,
-  },
-  buttonGroup: {
-    marginTop: 12,
-  },
-});
