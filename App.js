@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import LoginScreen from './src/screens/auth/LoginScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
+import PostListScreen from './src/screens/posts/PostListScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,11 @@ export default function App() {
           name="SignUp"
           component={SignUpScreen}
           options={{ title: "회원가입" }}
+        />
+        <Stack.Screen
+          name="PostList"
+          component={PostListScreen}
+          options={{ title: "모여라!" }}
         />
       </Stack.Navigator>
     </NavigationContainer>
